@@ -697,13 +697,43 @@ const App = () => {
   const renderChat = () => (
     <div className="chat-container">
       <div className="chat-header">
-        <h2>💬 Assistente Pessoal</h2>
+        <h2>💬 Assistente Pessoal Integrado</h2>
         <div className="voice-controls">
           <button
             onClick={isListening ? stopListening : startListening}
             className={`voice-btn ${isListening ? 'listening' : ''}`}
           >
             {isListening ? '🛑 Parar' : '🎤 Falar'}
+          </button>
+        </div>
+      </div>
+
+      <div className="chat-suggestions">
+        <h4>💡 Experimente comandos como:</h4>
+        <div className="suggestion-buttons">
+          <button 
+            onClick={() => setCurrentMessage('Crie uma nota sobre reunião de projeto')}
+            className="suggestion-btn"
+          >
+            📝 Criar nota
+          </button>
+          <button 
+            onClick={() => setCurrentMessage('Me lembre de ligar para o médico amanhã às 15h')}
+            className="suggestion-btn"
+          >
+            ⏰ Criar lembrete
+          </button>
+          <button 
+            onClick={() => setCurrentMessage('Anote que preciso comprar leite e pão')}
+            className="suggestion-btn"
+          >
+            📋 Anotar tarefa
+          </button>
+          <button 
+            onClick={() => setCurrentMessage('Lembre-me de fazer exercícios toda terça às 18h')}
+            className="suggestion-btn"
+          >
+            🔄 Lembrete recorrente
           </button>
         </div>
       </div>
@@ -746,7 +776,7 @@ const App = () => {
           value={currentMessage}
           onChange={(e) => setCurrentMessage(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="Digite sua mensagem ou use o microfone..."
+          placeholder="Digite sua mensagem, peça para criar notas/lembretes, ou use o microfone..."
           rows="2"
         />
         <button onClick={() => sendMessage()} disabled={isLoading}>
