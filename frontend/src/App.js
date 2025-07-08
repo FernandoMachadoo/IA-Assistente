@@ -42,6 +42,28 @@ const App = () => {
 
   const messagesEndRef = useRef(null);
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
+  const CORRECT_PASSWORD = '16042';
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (loginPassword === CORRECT_PASSWORD) {
+      setIsAuthenticated(true);
+      setLoginPassword('');
+    } else {
+      alert('Senha incorreta! Tente novamente.');
+      setLoginPassword('');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setActiveTab('dashboard');
+  };
+
+  const filterActivitiesByType = (type) => {
+    if (type === 'all') return activities;
+    return activities.filter(activity => activity.type === type);
+  };
 
   useEffect(() => {
     initializeSpeechRecognition();
