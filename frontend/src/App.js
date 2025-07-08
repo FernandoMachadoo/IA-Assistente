@@ -775,6 +775,45 @@ const App = () => {
     </div>
   );
 
+  const renderLogin = () => (
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <h1>🤖 IA Assistente Pessoal</h1>
+          <p>Acesso Seguro Necessário</p>
+        </div>
+        
+        <form onSubmit={handleLogin} className="login-form">
+          <div className="login-field">
+            <label>🔐 Senha de Acesso:</label>
+            <input
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              placeholder="Digite a senha..."
+              className="login-input"
+              autoFocus
+            />
+          </div>
+          
+          <button type="submit" className="login-btn">
+            🚀 Entrar
+          </button>
+        </form>
+        
+        <div className="login-footer">
+          <p>Seu assistente pessoal com IA avançada</p>
+          <div className="login-features">
+            <span>💬 Chat Inteligente</span>
+            <span>📝 Notas Organizadas</span>
+            <span>📅 Lembretes Inteligentes</span>
+            <span>💻 Análise de Código</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderChat = () => (
     <div className="chat-container">
       <div className="chat-header">
