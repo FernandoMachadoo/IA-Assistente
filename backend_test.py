@@ -24,7 +24,6 @@ class AIAssistantAPITest(unittest.TestCase):
         self.assertEqual(data["status"], "ok")
         print("✅ Health check passed")
 
-    @unittest.skip("AI features are not working due to emergentintegrations module issue")
     def test_02_chat_functionality(self):
         """Test the chat functionality"""
         print("\n🔍 Testing chat functionality...")
