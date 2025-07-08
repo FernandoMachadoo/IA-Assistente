@@ -781,11 +781,18 @@ const App = () => {
                     type="checkbox"
                     checked={note.completed}
                     onChange={() => toggleNoteComplete(note.id, note.completed)}
+                    disabled={isToggling[note.id]}
                   />
-                  <span className="checkmark">✓</span>
+                  <span className={`checkmark ${isToggling[note.id] ? 'loading' : ''}`}>
+                    {isToggling[note.id] ? '⏳' : '✓'}
+                  </span>
                 </label>
-                <button onClick={() => deleteItem('note', note.id)} className="delete-btn-small">
-                  🗑️
+                <button 
+                  onClick={() => deleteItem('note', note.id)} 
+                  className="delete-btn-small"
+                  disabled={isDeleting[note.id]}
+                >
+                  {isDeleting[note.id] ? '⏳' : '🗑️'}
                 </button>
               </div>
             </div>
