@@ -334,21 +334,59 @@ const App = () => {
     if (!window.confirm('Tem certeza que deseja deletar este item?')) return;
 
     try {
-      const response = await fetch(`${BACKEND_URL}/api/${type}/${id}`, {
+      let endpoint = '';
+      
+      // Map type to correct endpoint
+      switch(type) {
+        case 'note':
+          endpoint = 'notes';
+          break;
+        case 'reminder':
+          endpoint = 'reminders';
+          break;
+        case 'chat':
+          endpoint = 'chat';
+          break;
+        case 'search':
+          endpoint = 'search';
+          break;
+        case 'code':
+          endpoint = 'code';
+          break;
+        default:
+          endpoint = type; // fallback to original type
+      }
+
+      console.log(`Deleting ${endpoint}/${id}`);
+      
+      const response = await fetch(`${BACKEND_URL}/api/${endpoint}/${id}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
-        if (type === 'notes') {
+        console.log('Delete successful');
+        
+        // Refresh appropriate data
+        if (endpoint === 'notes') {
           loadNotes();
-        } else if (type === 'reminders') {
+        } else if (endpoint === 'reminders') {
           loadReminders();
         }
+        
+        // Always refresh dashboard and close modal
         loadDashboard();
         setShowActivityModal(false);
+        
+        // Show success message
+        alert('Item deletado com sucesso!');
+      } else {
+        const errorData = await response.json();
+        console.error('Delete failed:', errorData);
+        alert('Erro ao deletar item: ' + (errorData.detail || 'Erro desconhecido'));
       }
     } catch (error) {
       console.error(`Error deleting ${type}:`, error);
+      alert('Erro ao deletar item. Verifique a conexão.');
     }
   };
 
