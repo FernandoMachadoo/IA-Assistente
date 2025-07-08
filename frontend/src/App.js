@@ -814,6 +814,8 @@ const App = () => {
                 <button onClick={() => deleteItem('reminder', reminder.id)} className="delete-btn-small">
                   🗑️
                 </button>
+                  🗑️
+                </button>
               </div>
             </div>
             <p>{reminder.description}</p>
