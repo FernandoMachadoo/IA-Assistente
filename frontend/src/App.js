@@ -42,7 +42,7 @@ const App = () => {
 
   const messagesEndRef = useRef(null);
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
-  const CORRECT_PASSWORD = '16042';
+  const CORRECT_PASSWORD = process.env.REACT_APP_LOGIN_PASSWORD || '16042';
 
   const handleLogin = (e) => {
     e.preventDefault();
