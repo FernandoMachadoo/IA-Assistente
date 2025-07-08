@@ -196,9 +196,24 @@ const App = () => {
 
   const speakMessage = (text) => {
     if ('speechSynthesis' in window) {
+      // Cancel any ongoing speech
+      speechSynthesis.cancel();
+      
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = 'pt-BR';
-      utterance.rate = 0.9;
+      utterance.rate = 1.3; // Faster speech
+      utterance.pitch = 1.1; // Slightly higher pitch for more natural sound
+      utterance.volume = 0.8;
+      
+      // Try to get a more natural voice
+      const voices = speechSynthesis.getVoices();
+      const brazilianVoice = voices.find(voice => 
+        voice.lang.includes('pt-BR') || voice.lang.includes('pt')
+      );
+      if (brazilianVoice) {
+        utterance.voice = brazilianVoice;
+      }
+      
       speechSynthesis.speak(utterance);
     }
   };
