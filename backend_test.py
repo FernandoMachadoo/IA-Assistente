@@ -213,8 +213,11 @@ class AIAssistantAPITest(unittest.TestCase):
 def run_tests():
     suite = unittest.TestSuite()
     suite.addTest(AIAssistantAPITest('test_01_health_check'))
+    suite.addTest(AIAssistantAPITest('test_02_chat_functionality'))
     suite.addTest(AIAssistantAPITest('test_03_notes_crud'))
     suite.addTest(AIAssistantAPITest('test_04_reminders_crud'))
+    suite.addTest(AIAssistantAPITest('test_05_search_functionality'))
+    suite.addTest(AIAssistantAPITest('test_06_code_analysis'))
     suite.addTest(AIAssistantAPITest('test_07_dashboard'))
     
     runner = unittest.TextTestRunner(verbosity=2)
