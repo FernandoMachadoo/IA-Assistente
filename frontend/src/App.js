@@ -21,6 +21,10 @@ const App = () => {
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState(null);
   const [isToggling, setIsToggling] = useState({});
+  const [isDeleting, setIsDeleting] = useState({});
+  const [activeHistoryTab, setActiveHistoryTab] = useState('all');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginPassword, setLoginPassword] = useState('');
   const [activeHistoryTab, setActiveHistoryTab] = useState('all');
   const [expandedActivity, setExpandedActivity] = useState(null);
   const [showActivityModal, setShowActivityModal] = useState(false);
