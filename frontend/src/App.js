@@ -1231,56 +1231,62 @@ const App = () => {
 
   return (
     <div className="app">
-      <div className="sidebar">
-        <div className="sidebar-header">
-          <h1>🤖 IA Assistente</h1>
-        </div>
-        
-        <nav className="sidebar-nav">
-          <button
-            onClick={() => setActiveTab('dashboard')}
-            className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-          >
-            📊 Dashboard
-          </button>
-          <button
-            onClick={() => setActiveTab('chat')}
-            className={`nav-item ${activeTab === 'chat' ? 'active' : ''}`}
-          >
-            💬 Chat
-          </button>
-          <button
-            onClick={() => setActiveTab('notes')}
-            className={`nav-item ${activeTab === 'notes' ? 'active' : ''}`}
-          >
-            📝 Notas
-          </button>
-          <button
-            onClick={() => setActiveTab('reminders')}
-            className={`nav-item ${activeTab === 'reminders' ? 'active' : ''}`}
-          >
-            📅 Lembretes
-          </button>
-          <button
-            onClick={() => setActiveTab('search')}
-            className={`nav-item ${activeTab === 'search' ? 'active' : ''}`}
-          >
-            🔍 Pesquisar
-          </button>
-          <button
-            onClick={() => setActiveTab('code')}
-            className={`nav-item ${activeTab === 'code' ? 'active' : ''}`}
-          >
-            💻 Código
-          </button>
-        </nav>
-      </div>
-      
-      <div className="main-content">
-        {renderContent()}
-      </div>
-      
-      {renderActivityModal()}
+      {!isAuthenticated ? (
+        renderLogin()
+      ) : (
+        <>
+          <div className="sidebar">
+            <div className="sidebar-header">
+              <h1>🤖 IA Assistente</h1>
+            </div>
+            
+            <nav className="sidebar-nav">
+              <button
+                onClick={() => setActiveTab('dashboard')}
+                className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+              >
+                📊 Dashboard
+              </button>
+              <button
+                onClick={() => setActiveTab('chat')}
+                className={`nav-item ${activeTab === 'chat' ? 'active' : ''}`}
+              >
+                💬 Chat
+              </button>
+              <button
+                onClick={() => setActiveTab('notes')}
+                className={`nav-item ${activeTab === 'notes' ? 'active' : ''}`}
+              >
+                📝 Notas
+              </button>
+              <button
+                onClick={() => setActiveTab('reminders')}
+                className={`nav-item ${activeTab === 'reminders' ? 'active' : ''}`}
+              >
+                📅 Lembretes
+              </button>
+              <button
+                onClick={() => setActiveTab('search')}
+                className={`nav-item ${activeTab === 'search' ? 'active' : ''}`}
+              >
+                🔍 Pesquisar
+              </button>
+              <button
+                onClick={() => setActiveTab('code')}
+                className={`nav-item ${activeTab === 'code' ? 'active' : ''}`}
+              >
+                💻 Código
+              </button>
+            </nav>
+          </div>
+          
+          <div className="main-content">
+            {renderContent()}
+          </div>
+          
+          {renderActivityModal()}
+        </>
+      )}
     </div>
   );
 
