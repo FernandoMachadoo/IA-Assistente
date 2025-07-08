@@ -549,9 +549,29 @@ body {
   font-weight: bold;
 }
 
+.checkmark.loading {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 .checkbox-label input[type="checkbox"]:checked + .checkmark {
   background: #00d4ff;
   color: white;
+}
+
+.checkbox-label input[type="checkbox"]:disabled + .checkmark {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.delete-btn-small:disabled, .delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .delete-btn-small {
