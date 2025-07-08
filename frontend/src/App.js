@@ -483,8 +483,12 @@ const App = () => {
           <div className="modal-header">
             <h3>{expandedActivity.icon} {expandedActivity.title}</h3>
             <div className="modal-actions">
-              <button onClick={() => deleteItem(expandedActivity.type, expandedActivity.id)} className="delete-btn">
-                🗑️ Deletar
+              <button 
+                onClick={() => deleteItem(expandedActivity.type, expandedActivity.id)} 
+                className="delete-btn"
+                disabled={isDeleting[expandedActivity.id]}
+              >
+                {isDeleting[expandedActivity.id] ? '⏳ Deletando...' : '🗑️ Deletar'}
               </button>
               <button onClick={() => setShowActivityModal(false)} className="close-btn">×</button>
             </div>
