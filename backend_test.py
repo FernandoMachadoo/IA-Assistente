@@ -178,7 +178,6 @@ class AIAssistantAPITest(unittest.TestCase):
         self.assertIn("results", data)
         print("✅ Search functionality passed")
 
-    @unittest.skip("AI features are not working due to emergentintegrations module issue")
     def test_06_code_analysis(self):
         """Test the code analysis functionality"""
         print("\n🔍 Testing code analysis...")
