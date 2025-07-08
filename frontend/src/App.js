@@ -811,7 +811,7 @@ const App = () => {
                   />
                   <span className="checkmark">✓</span>
                 </label>
-                <button onClick={() => deleteItem('reminders', reminder.id)} className="delete-btn-small">
+                <button onClick={() => deleteItem('reminder', reminder.id)} className="delete-btn-small">
                   🗑️
                 </button>
               </div>
