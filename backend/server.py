@@ -213,13 +213,32 @@ Exemplos:
                 if len(parts) >= 5:
                     _, title, description, date_str, priority = parts[0], parts[1], parts[2], parts[3], parts[4]
                     
-                    # Parse date
+                    # Parse date with more flexibility
                     try:
+                        # First try to parse the provided date
                         reminder_date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
                     except:
-                        # If parsing fails, set for tomorrow at 10 AM
-                        reminder_date = datetime.now() + timedelta(days=1)
-                        reminder_date = reminder_date.replace(hour=10, minute=0, second=0, microsecond=0)
+                        try:
+                            # Try different common formats
+                            from dateutil import parser
+                            reminder_date = parser.parse(date_str)
+                        except:
+                            # If all parsing fails, set for tomorrow at extracted time or 10 AM
+                            tomorrow = datetime.now() + timedelta(days=1)
+                            
+                            # Try to extract hour from original message
+                            import re
+                            time_match = re.search(r'(\d{1,2})[h:]?(\d{0,2})', chat_request.message.lower())
+                            if time_match:
+                                hour = int(time_match.group(1))
+                                minute = int(time_match.group(2)) if time_match.group(2) else 0
+                                # Ensure valid time
+                                if 0 <= hour <= 23 and 0 <= minute <= 59:
+                                    reminder_date = tomorrow.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                                else:
+                                    reminder_date = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
+                            else:
+                                reminder_date = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
                     
                     # Create reminder
                     reminder_id = str(uuid.uuid4())
