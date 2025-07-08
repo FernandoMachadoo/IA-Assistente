@@ -14,6 +14,8 @@ const App = () => {
   const [codeToAnalyze, setCodeToAnalyze] = useState('');
   const [codeLanguage, setCodeLanguage] = useState('python');
   const [codeAnalysis, setCodeAnalysis] = useState('');
+  const [codeTask, setCodeTask] = useState('analyze');
+  const [codeDescription, setCodeDescription] = useState('');
   const [dashboardData, setDashboardData] = useState({});
   const [activities, setActivities] = useState([]);
   const [isListening, setIsListening] = useState(false);
@@ -141,6 +143,7 @@ const App = () => {
         setSessionId(data.session_id);
         const aiMessage = { text: data.response, sender: 'ai', timestamp: new Date() };
         setMessages(prev => [...prev, aiMessage]);
+        loadDashboard(); // Refresh dashboard to show new activity
       } else {
         throw new Error(data.detail || 'Error sending message');
       }
@@ -195,6 +198,7 @@ const App = () => {
 
       const data = await response.json();
       setSearchResults(data.results);
+      loadDashboard(); // Refresh dashboard to show new activity
     } catch (error) {
       console.error('Error searching:', error);
       setSearchResults('Erro na pesquisa. Tente novamente.');
@@ -204,7 +208,15 @@ const App = () => {
   };
 
   const handleCodeAnalysis = async () => {
-    if (!codeToAnalyze.trim()) return;
+    if (codeTask === 'generate' || codeTask === 'create') {
+      if (!codeDescription.trim()) {
+        alert('Por favor, descreva o que você quer que seja criado.');
+        return;
+      }
+    } else if (!codeToAnalyze.trim()) {
+      alert('Por favor, cole o código para análise.');
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -216,12 +228,14 @@ const App = () => {
         body: JSON.stringify({
           code: codeToAnalyze,
           language: codeLanguage,
-          task: 'analyze'
+          task: codeTask,
+          description: codeDescription
         }),
       });
 
       const data = await response.json();
       setCodeAnalysis(data.analysis);
+      loadDashboard(); // Refresh dashboard to show new activity
     } catch (error) {
       console.error('Error analyzing code:', error);
       setCodeAnalysis('Erro na análise. Tente novamente.');
@@ -284,6 +298,60 @@ const App = () => {
     }
   };
 
+  const toggleNoteComplete = async (noteId, completed) => {
+    try {
+      const endpoint = completed ? 'uncomplete' : 'complete';
+      const response = await fetch(`${BACKEND_URL}/api/notes/${noteId}/${endpoint}`, {
+        method: 'PUT',
+      });
+
+      if (response.ok) {
+        loadNotes();
+        loadDashboard();
+      }
+    } catch (error) {
+      console.error('Error toggling note completion:', error);
+    }
+  };
+
+  const toggleReminderComplete = async (reminderId, completed) => {
+    try {
+      const endpoint = completed ? 'uncomplete' : 'complete';
+      const response = await fetch(`${BACKEND_URL}/api/reminders/${reminderId}/${endpoint}`, {
+        method: 'PUT',
+      });
+
+      if (response.ok) {
+        loadReminders();
+        loadDashboard();
+      }
+    } catch (error) {
+      console.error('Error toggling reminder completion:', error);
+    }
+  };
+
+  const deleteItem = async (type, id) => {
+    if (!window.confirm('Tem certeza que deseja deletar este item?')) return;
+
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/${type}/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        if (type === 'notes') {
+          loadNotes();
+        } else if (type === 'reminders') {
+          loadReminders();
+        }
+        loadDashboard();
+        setShowActivityModal(false);
+      }
+    } catch (error) {
+      console.error(`Error deleting ${type}:`, error);
+    }
+  };
+
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -331,7 +399,12 @@ const App = () => {
         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
             <h3>{expandedActivity.icon} {expandedActivity.title}</h3>
-            <button onClick={() => setShowActivityModal(false)} className="close-btn">×</button>
+            <div className="modal-actions">
+              <button onClick={() => deleteItem(expandedActivity.type, expandedActivity.id)} className="delete-btn">
+                🗑️ Deletar
+              </button>
+              <button onClick={() => setShowActivityModal(false)} className="close-btn">×</button>
+            </div>
           </div>
           <div className="modal-body">
             <div className="activity-details">
@@ -365,6 +438,16 @@ const App = () => {
                         <strong>Tags:</strong> {expandedActivity.data.tags.join(', ')}
                       </div>
                     )}
+                    <div className="completion-status">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={expandedActivity.data.completed}
+                          onChange={() => toggleNoteComplete(expandedActivity.id, expandedActivity.data.completed)}
+                        />
+                        Concluído
+                      </label>
+                    </div>
                   </div>
                 </div>
               )}
@@ -380,9 +463,50 @@ const App = () => {
                     <span className={`priority priority-${expandedActivity.data.priority}`}>
                       Prioridade: {expandedActivity.data.priority}
                     </span>
-                    <span className="status">
-                      Status: {expandedActivity.data.completed ? 'Concluído' : 'Pendente'}
-                    </span>
+                    <div className="completion-status">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={expandedActivity.data.completed}
+                          onChange={() => toggleReminderComplete(expandedActivity.id, expandedActivity.data.completed)}
+                        />
+                        Concluído
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {expandedActivity.type === 'search' && (
+                <div className="search-details">
+                  <div className="search-query">
+                    <strong>Consulta:</strong>
+                    <p>{expandedActivity.data.query}</p>
+                  </div>
+                  <div className="search-results">
+                    <strong>Resultados:</strong>
+                    <pre>{expandedActivity.data.results}</pre>
+                  </div>
+                </div>
+              )}
+
+              {expandedActivity.type === 'code' && (
+                <div className="code-details">
+                  {expandedActivity.data.description && (
+                    <div className="code-description">
+                      <strong>Descrição:</strong>
+                      <p>{expandedActivity.data.description}</p>
+                    </div>
+                  )}
+                  {expandedActivity.data.code && (
+                    <div className="code-original">
+                      <strong>Código Original ({expandedActivity.data.language}):</strong>
+                      <pre>{expandedActivity.data.code}</pre>
+                    </div>
+                  )}
+                  <div className="code-analysis">
+                    <strong>Análise/Resultado:</strong>
+                    <pre>{expandedActivity.data.analysis}</pre>
                   </div>
                 </div>
               )}
@@ -565,8 +689,23 @@ const App = () => {
       
       <div className="notes-list">
         {notes.map((note) => (
-          <div key={note.id} className="note-item">
-            <h3>{note.title}</h3>
+          <div key={note.id} className={`note-item ${note.completed ? 'completed' : ''}`}>
+            <div className="note-header">
+              <h3>{note.title}</h3>
+              <div className="note-actions">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={note.completed}
+                    onChange={() => toggleNoteComplete(note.id, note.completed)}
+                  />
+                  <span className="checkmark">✓</span>
+                </label>
+                <button onClick={() => deleteItem('notes', note.id)} className="delete-btn-small">
+                  🗑️
+                </button>
+              </div>
+            </div>
             <p>{note.content}</p>
             <div className="note-meta">
               <span className="category">{note.category}</span>
@@ -622,8 +761,23 @@ const App = () => {
       
       <div className="reminders-list">
         {reminders.map((reminder) => (
-          <div key={reminder.id} className={`reminder-item priority-${reminder.priority}`}>
-            <h3>{reminder.title}</h3>
+          <div key={reminder.id} className={`reminder-item priority-${reminder.priority} ${reminder.completed ? 'completed' : ''}`}>
+            <div className="reminder-header">
+              <h3>{reminder.title}</h3>
+              <div className="reminder-actions">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={reminder.completed}
+                    onChange={() => toggleReminderComplete(reminder.id, reminder.completed)}
+                  />
+                  <span className="checkmark">✓</span>
+                </label>
+                <button onClick={() => deleteItem('reminders', reminder.id)} className="delete-btn-small">
+                  🗑️
+                </button>
+              </div>
+            </div>
             <p>{reminder.description}</p>
             <div className="reminder-meta">
               <span className="date">
@@ -674,7 +828,7 @@ const App = () => {
   const renderCode = () => (
     <div className="code-container">
       <div className="code-header">
-        <h2>💻 Análise de Código</h2>
+        <h2>💻 Análise e Geração de Código</h2>
       </div>
       
       <div className="code-form">
@@ -689,23 +843,50 @@ const App = () => {
             <option value="cpp">C++</option>
             <option value="html">HTML</option>
             <option value="css">CSS</option>
+            <option value="react">React</option>
+            <option value="node">Node.js</option>
+          </select>
+          <select
+            value={codeTask}
+            onChange={(e) => setCodeTask(e.target.value)}
+          >
+            <option value="analyze">Analisar Código</option>
+            <option value="explain">Explicar Código</option>
+            <option value="improve">Melhorar Código</option>
+            <option value="generate">Gerar Código</option>
+            <option value="create">Criar Código</option>
           </select>
         </div>
-        <textarea
-          value={codeToAnalyze}
-          onChange={(e) => setCodeToAnalyze(e.target.value)}
-          placeholder="Cole seu código aqui para análise..."
-          rows="10"
-          className="code-textarea"
-        />
+        
+        {(codeTask === 'generate' || codeTask === 'create') ? (
+          <textarea
+            value={codeDescription}
+            onChange={(e) => setCodeDescription(e.target.value)}
+            placeholder="Descreva o que você quer que seja criado... Ex: 'Crie uma função que calcula a área de um círculo'"
+            rows="6"
+            className="code-textarea"
+          />
+        ) : (
+          <textarea
+            value={codeToAnalyze}
+            onChange={(e) => setCodeToAnalyze(e.target.value)}
+            placeholder="Cole seu código aqui para análise..."
+            rows="10"
+            className="code-textarea"
+          />
+        )}
+        
         <button onClick={handleCodeAnalysis} disabled={isLoading} className="analyze-btn">
-          {isLoading ? '⏳ Analisando...' : '🔬 Analisar Código'}
+          {isLoading ? '⏳ Processando...' : 
+           codeTask === 'generate' || codeTask === 'create' ? '🚀 Gerar Código' : '🔬 Analisar Código'}
         </button>
       </div>
       
       {codeAnalysis && (
         <div className="code-analysis">
-          <h3>Análise do Código:</h3>
+          <h3>
+            {codeTask === 'generate' || codeTask === 'create' ? 'Código Gerado:' : 'Análise do Código:'}
+          </h3>
           <div className="analysis-content">
             <pre>{codeAnalysis}</pre>
           </div>

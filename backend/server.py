@@ -36,6 +36,8 @@ chats_collection = db.chats
 notes_collection = db.notes
 reminders_collection = db.reminders
 sessions_collection = db.sessions
+searches_collection = db.searches
+code_analyses_collection = db.code_analyses
 
 # Google Gemini Configuration
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
@@ -63,6 +65,7 @@ class NoteResponse(BaseModel):
     tags: List[str]
     created_at: datetime
     updated_at: datetime
+    completed: bool
 
 class Reminder(BaseModel):
     title: str
@@ -87,6 +90,7 @@ class CodeAnalysis(BaseModel):
     code: str
     language: Optional[str] = "python"
     task: Optional[str] = "analyze"
+    description: Optional[str] = ""
 
 # Helper Functions
 def get_or_create_session(session_id: str = None):
@@ -109,6 +113,26 @@ def save_message(session_id: str, message: str, response: str):
         "session_id": session_id,
         "message": message,
         "response": response,
+        "timestamp": datetime.now()
+    })
+
+def save_search(query: str, results: str, search_type: str):
+    searches_collection.insert_one({
+        "id": str(uuid.uuid4()),
+        "query": query,
+        "results": results,
+        "type": search_type,
+        "timestamp": datetime.now()
+    })
+
+def save_code_analysis(code: str, language: str, task: str, analysis: str, description: str = ""):
+    code_analyses_collection.insert_one({
+        "id": str(uuid.uuid4()),
+        "code": code,
+        "language": language,
+        "task": task,
+        "analysis": analysis,
+        "description": description,
         "timestamp": datetime.now()
     })
 
@@ -185,6 +209,20 @@ async def get_recent_chats():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching recent chats: {str(e)}")
 
+@app.delete("/api/chat/{chat_id}")
+async def delete_chat(chat_id: str):
+    try:
+        from bson import ObjectId
+        result = chats_collection.delete_one({"_id": ObjectId(chat_id)})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Chat not found")
+            
+        return {"message": "Chat deleted successfully"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting chat: {str(e)}")
+
 @app.post("/api/notes", response_model=NoteResponse)
 async def create_note(note: Note):
     try:
@@ -196,7 +234,8 @@ async def create_note(note: Note):
             "category": note.category,
             "tags": note.tags,
             "created_at": datetime.now(),
-            "updated_at": datetime.now()
+            "updated_at": datetime.now(),
+            "completed": False
         }
         
         notes_collection.insert_one(note_data)
@@ -228,7 +267,8 @@ async def get_notes(category: Optional[str] = None, tag: Optional[str] = None, r
                 "category": note["category"],
                 "tags": note["tags"],
                 "created_at": note["created_at"],
-                "updated_at": note["updated_at"]
+                "updated_at": note["updated_at"],
+                "completed": note.get("completed", False)
             }
             for note in notes
         ]
@@ -259,6 +299,38 @@ async def update_note(note_id: str, note: Note):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating note: {str(e)}")
+
+@app.put("/api/notes/{note_id}/complete")
+async def complete_note(note_id: str):
+    try:
+        result = notes_collection.update_one(
+            {"id": note_id},
+            {"$set": {"completed": True, "updated_at": datetime.now()}}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Note not found")
+            
+        return {"message": "Note completed successfully"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error completing note: {str(e)}")
+
+@app.put("/api/notes/{note_id}/uncomplete")
+async def uncomplete_note(note_id: str):
+    try:
+        result = notes_collection.update_one(
+            {"id": note_id},
+            {"$set": {"completed": False, "updated_at": datetime.now()}}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Note not found")
+            
+        return {"message": "Note uncompleted successfully"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error uncompleting note: {str(e)}")
 
 @app.delete("/api/notes/{note_id}")
 async def delete_note(note_id: str):
@@ -339,6 +411,35 @@ async def complete_reminder(reminder_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error completing reminder: {str(e)}")
 
+@app.put("/api/reminders/{reminder_id}/uncomplete")
+async def uncomplete_reminder(reminder_id: str):
+    try:
+        result = reminders_collection.update_one(
+            {"id": reminder_id},
+            {"$set": {"completed": False}}
+        )
+        
+        if result.matched_count == 0:
+            raise HTTPException(status_code=404, detail="Reminder not found")
+            
+        return {"message": "Reminder uncompleted successfully"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error uncompleting reminder: {str(e)}")
+
+@app.delete("/api/reminders/{reminder_id}")
+async def delete_reminder(reminder_id: str):
+    try:
+        result = reminders_collection.delete_one({"id": reminder_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Reminder not found")
+            
+        return {"message": "Reminder deleted successfully"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting reminder: {str(e)}")
+
 @app.post("/api/search")
 async def search(search_query: SearchQuery):
     try:
@@ -354,6 +455,9 @@ async def search(search_query: SearchQuery):
         user_message = UserMessage(text=search_prompt)
         response = await chat.send_message(user_message)
         
+        # Save search to database
+        save_search(search_query.query, response, search_query.type)
+        
         return {
             "query": search_query.query,
             "results": response,
@@ -363,6 +467,19 @@ async def search(search_query: SearchQuery):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error performing search: {str(e)}")
 
+@app.delete("/api/search/{search_id}")
+async def delete_search(search_id: str):
+    try:
+        result = searches_collection.delete_one({"id": search_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Search not found")
+            
+        return {"message": "Search deleted successfully"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting search: {str(e)}")
+
 @app.post("/api/code/analyze")
 async def analyze_code(code_request: CodeAnalysis):
     try:
@@ -370,7 +487,7 @@ async def analyze_code(code_request: CodeAnalysis):
         chat = LlmChat(
             api_key=GEMINI_API_KEY,
             session_id=str(uuid.uuid4()),
-            system_message="Você é um especialista em desenvolvimento de software. Analise código, identifique problemas, sugira melhorias e forneça explicações detalhadas. Responda sempre em português brasileiro."
+            system_message="Você é um especialista em desenvolvimento de software. Analise código, identifique problemas, sugira melhorias, forneça explicações detalhadas e GERE CÓDIGO quando solicitado. Responda sempre em português brasileiro."
         ).with_model("gemini", "gemini-2.0-flash").with_max_tokens(4096)
         
         if code_request.task == "analyze":
@@ -379,21 +496,52 @@ async def analyze_code(code_request: CodeAnalysis):
             prompt = f"Explique detalhadamente este código {code_request.language}:\n\n{code_request.code}"
         elif code_request.task == "improve":
             prompt = f"Melhore este código {code_request.language} e explique as melhorias:\n\n{code_request.code}"
+        elif code_request.task == "generate":
+            prompt = f"Gere código {code_request.language} para: {code_request.description}\n\nForneça o código completo e funcional com explicações."
+        elif code_request.task == "create":
+            prompt = f"Crie um código {code_request.language} que faça: {code_request.description}\n\nForneça o código completo, bem estruturado e com comentários explicativos."
         else:
-            prompt = f"Analise este código {code_request.language}:\n\n{code_request.code}"
+            # Check if user is asking to generate code based on description
+            if code_request.description and not code_request.code.strip():
+                prompt = f"Crie um código {code_request.language} que faça: {code_request.description}\n\nForneça o código completo, bem estruturado e com comentários explicativos."
+            else:
+                prompt = f"Analise este código {code_request.language}:\n\n{code_request.code}"
             
         user_message = UserMessage(text=prompt)
         response = await chat.send_message(user_message)
+        
+        # Save code analysis to database
+        save_code_analysis(
+            code_request.code, 
+            code_request.language, 
+            code_request.task, 
+            response, 
+            code_request.description
+        )
         
         return {
             "code": code_request.code,
             "language": code_request.language,
             "task": code_request.task,
+            "description": code_request.description,
             "analysis": response
         }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error analyzing code: {str(e)}")
+
+@app.delete("/api/code/{code_id}")
+async def delete_code_analysis(code_id: str):
+    try:
+        result = code_analyses_collection.delete_one({"id": code_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Code analysis not found")
+            
+        return {"message": "Code analysis deleted successfully"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting code analysis: {str(e)}")
 
 @app.get("/api/dashboard")
 async def get_dashboard():
@@ -411,9 +559,11 @@ async def get_dashboard():
         })
         
         # Get recent activities for timeline
-        recent_chat_activities = list(chats_collection.find().sort("timestamp", -1).limit(5))
-        recent_note_activities = list(notes_collection.find().sort("created_at", -1).limit(5))
-        recent_reminder_activities = list(reminders_collection.find().sort("created_at", -1).limit(5))
+        recent_chat_activities = list(chats_collection.find().sort("timestamp", -1).limit(3))
+        recent_note_activities = list(notes_collection.find().sort("created_at", -1).limit(3))
+        recent_reminder_activities = list(reminders_collection.find().sort("created_at", -1).limit(3))
+        recent_search_activities = list(searches_collection.find().sort("timestamp", -1).limit(3))
+        recent_code_activities = list(code_analyses_collection.find().sort("timestamp", -1).limit(3))
         
         # Format activities for timeline
         activities = []
@@ -421,6 +571,7 @@ async def get_dashboard():
         # Add recent chats
         for chat in recent_chat_activities:
             activities.append({
+                "id": str(chat["_id"]),
                 "type": "chat",
                 "icon": "💬",
                 "title": "Conversa com IA",
@@ -436,6 +587,7 @@ async def get_dashboard():
         # Add recent notes
         for note in recent_note_activities:
             activities.append({
+                "id": note["id"],
                 "type": "note",
                 "icon": "📝",
                 "title": f"Nota: {note['title']}",
@@ -445,13 +597,15 @@ async def get_dashboard():
                     "title": note["title"],
                     "content": note["content"],
                     "category": note["category"],
-                    "tags": note["tags"]
+                    "tags": note["tags"],
+                    "completed": note.get("completed", False)
                 }
             })
         
         # Add recent reminders
         for reminder in recent_reminder_activities:
             activities.append({
+                "id": reminder["id"],
                 "type": "reminder",
                 "icon": "📅",
                 "title": f"Lembrete: {reminder['title']}",
@@ -463,6 +617,41 @@ async def get_dashboard():
                     "date": reminder["date"],
                     "priority": reminder["priority"],
                     "completed": reminder["completed"]
+                }
+            })
+        
+        # Add recent searches
+        for search in recent_search_activities:
+            activities.append({
+                "id": search["id"],
+                "type": "search",
+                "icon": "🔍",
+                "title": f"Pesquisa: {search['query']}",
+                "description": search["results"][:100] + "..." if len(search["results"]) > 100 else search["results"],
+                "timestamp": search["timestamp"],
+                "data": {
+                    "query": search["query"],
+                    "results": search["results"],
+                    "type": search["type"]
+                }
+            })
+        
+        # Add recent code analyses
+        for code in recent_code_activities:
+            title = f"Código: {code['description']}" if code.get('description') else f"Análise {code['language']}"
+            activities.append({
+                "id": code["id"],
+                "type": "code",
+                "icon": "💻",
+                "title": title,
+                "description": code["analysis"][:100] + "..." if len(code["analysis"]) > 100 else code["analysis"],
+                "timestamp": code["timestamp"],
+                "data": {
+                    "code": code["code"],
+                    "language": code["language"],
+                    "task": code["task"],
+                    "analysis": code["analysis"],
+                    "description": code.get("description", "")
                 }
             })
         
