@@ -222,28 +222,47 @@ Exemplos:
                     
                     # Parse date with more flexibility
                     try:
-                        # First try to parse the provided date
-                        reminder_date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                        # Handle special date strings
+                        if "AMANHA" in date_str.upper():
+                            tomorrow = datetime.now() + timedelta(days=1)
+                            if "15H" in date_str.upper():
+                                reminder_date = tomorrow.replace(hour=15, minute=0, second=0, microsecond=0)
+                            elif "10H" in date_str.upper():
+                                reminder_date = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
+                            else:
+                                reminder_date = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
+                        else:
+                            # Try to parse as ISO format first
+                            reminder_date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
                     except:
                         try:
-                            # Try different common formats
+                            # Try different common formats using dateutil
                             from dateutil import parser
-                            reminder_date = parser.parse(date_str)
+                            reminder_date = parser.parse(date_str, default=datetime.now() + timedelta(days=1))
                         except:
-                            # If all parsing fails, set for tomorrow at extracted time or 10 AM
+                            # Final fallback: extract time from original message
                             tomorrow = datetime.now() + timedelta(days=1)
                             
                             # Try to extract hour from original message
                             import re
-                            time_match = re.search(r'(\d{1,2})[h:]?(\d{0,2})', chat_request.message.lower())
-                            if time_match:
-                                hour = int(time_match.group(1))
-                                minute = int(time_match.group(2)) if time_match.group(2) else 0
-                                # Ensure valid time
-                                if 0 <= hour <= 23 and 0 <= minute <= 59:
-                                    reminder_date = tomorrow.replace(hour=hour, minute=minute, second=0, microsecond=0)
-                                else:
-                                    reminder_date = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
+                            time_patterns = [
+                                r'(\d{1,2})[h:](\d{2})',  # 15h30, 15:30
+                                r'(\d{1,2})h',             # 15h
+                                r'às (\d{1,2})',          # às 15
+                                r'(\d{1,2}) horas'        # 15 horas
+                            ]
+                            
+                            hour, minute = 10, 0  # default
+                            for pattern in time_patterns:
+                                time_match = re.search(pattern, chat_request.message.lower())
+                                if time_match:
+                                    hour = int(time_match.group(1))
+                                    minute = int(time_match.group(2)) if len(time_match.groups()) > 1 and time_match.group(2) else 0
+                                    break
+                            
+                            # Ensure valid time
+                            if 0 <= hour <= 23 and 0 <= minute <= 59:
+                                reminder_date = tomorrow.replace(hour=hour, minute=minute, second=0, microsecond=0)
                             else:
                                 reminder_date = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
                     
