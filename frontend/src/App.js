@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState('chat');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [messages, setMessages] = useState([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [sessionId, setSessionId] = useState(null);
@@ -15,9 +15,12 @@ const App = () => {
   const [codeLanguage, setCodeLanguage] = useState('python');
   const [codeAnalysis, setCodeAnalysis] = useState('');
   const [dashboardData, setDashboardData] = useState({});
+  const [activities, setActivities] = useState([]);
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState(null);
   const [selectedNote, setSelectedNote] = useState(null);
+  const [expandedActivity, setExpandedActivity] = useState(null);
+  const [showActivityModal, setShowActivityModal] = useState(false);
   const [noteForm, setNoteForm] = useState({
     title: '',
     content: '',
@@ -42,6 +45,14 @@ const App = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    if (activeTab === 'notes') {
+      loadNotes();
+    } else if (activeTab === 'reminders') {
+      loadReminders();
+    }
+  }, [activeTab]);
 
   const initializeSpeechRecognition = () => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -79,6 +90,7 @@ const App = () => {
       const response = await fetch(`${BACKEND_URL}/api/dashboard`);
       const data = await response.json();
       setDashboardData(data);
+      setActivities(data.activities || []);
     } catch (error) {
       console.error('Error loading dashboard:', error);
     }
@@ -238,6 +250,7 @@ const App = () => {
       if (response.ok) {
         setNoteForm({ title: '', content: '', category: 'general', tags: '' });
         loadNotes();
+        loadDashboard(); // Refresh dashboard to show new activity
       }
     } catch (error) {
       console.error('Error saving note:', error);
@@ -264,6 +277,7 @@ const App = () => {
       if (response.ok) {
         setReminderForm({ title: '', description: '', date: '', priority: 'medium' });
         loadReminders();
+        loadDashboard(); // Refresh dashboard to show new activity
       }
     } catch (error) {
       console.error('Error saving reminder:', error);
@@ -276,6 +290,176 @@ const App = () => {
       sendMessage();
     }
   };
+
+  const handleActivityClick = (activity) => {
+    setExpandedActivity(activity);
+    setShowActivityModal(true);
+  };
+
+  const handleStatCardClick = (type) => {
+    if (type === 'chats') {
+      setActiveTab('chat');
+    } else if (type === 'notes') {
+      setActiveTab('notes');
+    } else if (type === 'reminders') {
+      setActiveTab('reminders');
+    }
+  };
+
+  const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) {
+      return 'Hoje às ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDays === 2) {
+      return 'Ontem às ' + date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    } else if (diffDays <= 7) {
+      return diffDays + ' dias atrás';
+    } else {
+      return date.toLocaleDateString('pt-BR');
+    }
+  };
+
+  const renderActivityModal = () => {
+    if (!showActivityModal || !expandedActivity) return null;
+
+    return (
+      <div className="modal-overlay" onClick={() => setShowActivityModal(false)}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>{expandedActivity.icon} {expandedActivity.title}</h3>
+            <button onClick={() => setShowActivityModal(false)} className="close-btn">×</button>
+          </div>
+          <div className="modal-body">
+            <div className="activity-details">
+              <p className="activity-timestamp">
+                {formatTimestamp(expandedActivity.timestamp)}
+              </p>
+              
+              {expandedActivity.type === 'chat' && (
+                <div className="chat-details">
+                  <div className="chat-message">
+                    <strong>Sua pergunta:</strong>
+                    <p>{expandedActivity.data.message}</p>
+                  </div>
+                  <div className="chat-response">
+                    <strong>Resposta da IA:</strong>
+                    <p>{expandedActivity.data.response}</p>
+                  </div>
+                </div>
+              )}
+              
+              {expandedActivity.type === 'note' && (
+                <div className="note-details">
+                  <div className="note-content">
+                    <strong>Conteúdo:</strong>
+                    <p>{expandedActivity.data.content}</p>
+                  </div>
+                  <div className="note-meta">
+                    <span className="category">Categoria: {expandedActivity.data.category}</span>
+                    {expandedActivity.data.tags.length > 0 && (
+                      <div className="tags">
+                        <strong>Tags:</strong> {expandedActivity.data.tags.join(', ')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {expandedActivity.type === 'reminder' && (
+                <div className="reminder-details">
+                  <div className="reminder-content">
+                    <strong>Descrição:</strong>
+                    <p>{expandedActivity.data.description}</p>
+                  </div>
+                  <div className="reminder-meta">
+                    <span className="date">Data: {new Date(expandedActivity.data.date).toLocaleString('pt-BR')}</span>
+                    <span className={`priority priority-${expandedActivity.data.priority}`}>
+                      Prioridade: {expandedActivity.data.priority}
+                    </span>
+                    <span className="status">
+                      Status: {expandedActivity.data.completed ? 'Concluído' : 'Pendente'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDashboard = () => (
+    <div className="dashboard-container">
+      <div className="dashboard-header">
+        <h2>📊 Dashboard</h2>
+        <button onClick={loadDashboard} className="refresh-btn">🔄</button>
+      </div>
+      
+      <div className="dashboard-stats">
+        <div className="stat-card" onClick={() => handleStatCardClick('chats')}>
+          <h3>💬 Conversas (7 dias)</h3>
+          <span className="stat-number">{dashboardData.recent_chats || 0}</span>
+          <p className="stat-description">Clique para ver conversas</p>
+        </div>
+        <div className="stat-card" onClick={() => handleStatCardClick('notes')}>
+          <h3>📝 Total de Notas</h3>
+          <span className="stat-number">{dashboardData.total_notes || 0}</span>
+          <p className="stat-description">Clique para gerenciar notas</p>
+        </div>
+        <div className="stat-card" onClick={() => handleStatCardClick('reminders')}>
+          <h3>⏰ Lembretes Pendentes</h3>
+          <span className="stat-number">{dashboardData.upcoming_reminders || 0}</span>
+          <p className="stat-description">Clique para ver lembretes</p>
+        </div>
+      </div>
+      
+      <div className="dashboard-activities">
+        <h3>📋 Histórico de Atividades</h3>
+        <div className="activities-timeline">
+          {activities.length > 0 ? (
+            activities.map((activity, index) => (
+              <div key={index} className="activity-item" onClick={() => handleActivityClick(activity)}>
+                <div className="activity-icon">{activity.icon}</div>
+                <div className="activity-content">
+                  <h4>{activity.title}</h4>
+                  <p>{activity.description}</p>
+                  <span className="activity-time">{formatTimestamp(activity.timestamp)}</span>
+                </div>
+                <div className="activity-arrow">→</div>
+              </div>
+            ))
+          ) : (
+            <div className="no-activities">
+              <p>Nenhuma atividade recente encontrada.</p>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <div className="dashboard-quick-actions">
+        <h3>Ações Rápidas:</h3>
+        <div className="quick-buttons">
+          <button onClick={() => setActiveTab('chat')} className="quick-btn">
+            💬 Nova Conversa
+          </button>
+          <button onClick={() => setActiveTab('notes')} className="quick-btn">
+            📝 Criar Nota
+          </button>
+          <button onClick={() => setActiveTab('reminders')} className="quick-btn">
+            📅 Novo Lembrete
+          </button>
+          <button onClick={() => setActiveTab('search')} className="quick-btn">
+            🔍 Pesquisar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   const renderChat = () => (
     <div className="chat-container">
@@ -530,48 +714,6 @@ const App = () => {
     </div>
   );
 
-  const renderDashboard = () => (
-    <div className="dashboard-container">
-      <div className="dashboard-header">
-        <h2>📊 Dashboard</h2>
-        <button onClick={loadDashboard} className="refresh-btn">🔄</button>
-      </div>
-      
-      <div className="dashboard-stats">
-        <div className="stat-card">
-          <h3>💬 Conversas (7 dias)</h3>
-          <span className="stat-number">{dashboardData.recent_chats || 0}</span>
-        </div>
-        <div className="stat-card">
-          <h3>📝 Total de Notas</h3>
-          <span className="stat-number">{dashboardData.total_notes || 0}</span>
-        </div>
-        <div className="stat-card">
-          <h3>⏰ Lembretes Pendentes</h3>
-          <span className="stat-number">{dashboardData.upcoming_reminders || 0}</span>
-        </div>
-      </div>
-      
-      <div className="dashboard-quick-actions">
-        <h3>Ações Rápidas:</h3>
-        <div className="quick-buttons">
-          <button onClick={() => setActiveTab('chat')} className="quick-btn">
-            💬 Nova Conversa
-          </button>
-          <button onClick={() => setActiveTab('notes')} className="quick-btn">
-            📝 Criar Nota
-          </button>
-          <button onClick={() => setActiveTab('reminders')} className="quick-btn">
-            📅 Novo Lembrete
-          </button>
-          <button onClick={() => setActiveTab('search')} className="quick-btn">
-            🔍 Pesquisar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
   const renderContent = () => {
     switch(activeTab) {
       case 'chat':
@@ -639,6 +781,8 @@ const App = () => {
       <div className="main-content">
         {renderContent()}
       </div>
+      
+      {renderActivityModal()}
     </div>
   );
 };

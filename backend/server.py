@@ -167,6 +167,24 @@ async def get_chat_history(session_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching history: {str(e)}")
 
+@app.get("/api/chat/recent")
+async def get_recent_chats():
+    try:
+        recent_chats = list(chats_collection.find().sort("timestamp", -1).limit(10))
+        
+        return [
+            {
+                "id": str(msg["_id"]),
+                "message": msg["message"][:100] + "..." if len(msg["message"]) > 100 else msg["message"],
+                "response": msg["response"][:200] + "..." if len(msg["response"]) > 200 else msg["response"],
+                "timestamp": msg["timestamp"],
+                "session_id": msg["session_id"]
+            }
+            for msg in recent_chats
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching recent chats: {str(e)}")
+
 @app.post("/api/notes", response_model=NoteResponse)
 async def create_note(note: Note):
     try:
@@ -189,15 +207,18 @@ async def create_note(note: Note):
         raise HTTPException(status_code=500, detail=f"Error creating note: {str(e)}")
 
 @app.get("/api/notes")
-async def get_notes(category: Optional[str] = None, tag: Optional[str] = None):
+async def get_notes(category: Optional[str] = None, tag: Optional[str] = None, recent: Optional[bool] = False):
     try:
         query = {}
         if category:
             query["category"] = category
         if tag:
             query["tags"] = {"$in": [tag]}
-            
+        
         notes = list(notes_collection.find(query).sort("created_at", -1))
+        
+        if recent:
+            notes = notes[:10]  # Limit to 10 recent notes
         
         return [
             {
@@ -274,15 +295,18 @@ async def create_reminder(reminder: Reminder):
         raise HTTPException(status_code=500, detail=f"Error creating reminder: {str(e)}")
 
 @app.get("/api/reminders")
-async def get_reminders(upcoming: Optional[bool] = None):
+async def get_reminders(upcoming: Optional[bool] = None, recent: Optional[bool] = False):
     try:
         query = {}
         if upcoming:
             query["date"] = {"$gte": datetime.now()}
             query["completed"] = False
-            
+        
         reminders = list(reminders_collection.find(query).sort("date", 1))
         
+        if recent:
+            reminders = reminders[:10]  # Limit to 10 recent reminders
+            
         return [
             {
                 "id": reminder["id"],
@@ -386,11 +410,72 @@ async def get_dashboard():
             "completed": False
         })
         
+        # Get recent activities for timeline
+        recent_chat_activities = list(chats_collection.find().sort("timestamp", -1).limit(5))
+        recent_note_activities = list(notes_collection.find().sort("created_at", -1).limit(5))
+        recent_reminder_activities = list(reminders_collection.find().sort("created_at", -1).limit(5))
+        
+        # Format activities for timeline
+        activities = []
+        
+        # Add recent chats
+        for chat in recent_chat_activities:
+            activities.append({
+                "type": "chat",
+                "icon": "💬",
+                "title": "Conversa com IA",
+                "description": chat["message"][:100] + "..." if len(chat["message"]) > 100 else chat["message"],
+                "timestamp": chat["timestamp"],
+                "data": {
+                    "message": chat["message"],
+                    "response": chat["response"],
+                    "session_id": chat["session_id"]
+                }
+            })
+        
+        # Add recent notes
+        for note in recent_note_activities:
+            activities.append({
+                "type": "note",
+                "icon": "📝",
+                "title": f"Nota: {note['title']}",
+                "description": note["content"][:100] + "..." if len(note["content"]) > 100 else note["content"],
+                "timestamp": note["created_at"],
+                "data": {
+                    "title": note["title"],
+                    "content": note["content"],
+                    "category": note["category"],
+                    "tags": note["tags"]
+                }
+            })
+        
+        # Add recent reminders
+        for reminder in recent_reminder_activities:
+            activities.append({
+                "type": "reminder",
+                "icon": "📅",
+                "title": f"Lembrete: {reminder['title']}",
+                "description": reminder["description"][:100] + "..." if len(reminder["description"]) > 100 else reminder["description"],
+                "timestamp": reminder["created_at"],
+                "data": {
+                    "title": reminder["title"],
+                    "description": reminder["description"],
+                    "date": reminder["date"],
+                    "priority": reminder["priority"],
+                    "completed": reminder["completed"]
+                }
+            })
+        
+        # Sort activities by timestamp
+        activities.sort(key=lambda x: x["timestamp"], reverse=True)
+        activities = activities[:15]  # Limit to 15 most recent activities
+        
         return {
             "recent_chats": recent_chats,
             "total_notes": total_notes,
             "upcoming_reminders": upcoming_reminders,
-            "last_activity": datetime.now()
+            "last_activity": datetime.now(),
+            "activities": activities
         }
         
     except Exception as e:
