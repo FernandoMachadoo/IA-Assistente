@@ -22,6 +22,9 @@ const App = () => {
   const [recognition, setRecognition] = useState(null);
   const [isToggling, setIsToggling] = useState({});
   const [isDeleting, setIsDeleting] = useState({});
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginPassword, setLoginPassword] = useState('');
+  const [isDeleting, setIsDeleting] = useState({});
   const [activeHistoryTab, setActiveHistoryTab] = useState('all');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginPassword, setLoginPassword] = useState('');
