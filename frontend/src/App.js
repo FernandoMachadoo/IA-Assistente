@@ -860,11 +860,18 @@ const App = () => {
                     type="checkbox"
                     checked={reminder.completed}
                     onChange={() => toggleReminderComplete(reminder.id, reminder.completed)}
+                    disabled={isToggling[reminder.id]}
                   />
-                  <span className="checkmark">✓</span>
+                  <span className={`checkmark ${isToggling[reminder.id] ? 'loading' : ''}`}>
+                    {isToggling[reminder.id] ? '⏳' : '✓'}
+                  </span>
                 </label>
-                <button onClick={() => deleteItem('reminder', reminder.id)} className="delete-btn-small">
-                  🗑️
+                <button 
+                  onClick={() => deleteItem('reminder', reminder.id)} 
+                  className="delete-btn-small"
+                  disabled={isDeleting[reminder.id]}
+                >
+                  {isDeleting[reminder.id] ? '⏳' : '🗑️'}
                 </button>
               </div>
             </div>
