@@ -1302,6 +1302,45 @@ body {
   color: #ffffff;
 }
 
+/* Hide Made with Emergent watermark */
+iframe[src*="emergent"], 
+.emergent-watermark,
+[class*="emergent-watermark"],
+[id*="emergent-watermark"],
+div[style*="Made with Emergent"],
+div[style*="emergent"],
+div:has-text("Made with Emergent"),
+div:has-text("Made with"),
+div:has-text("Emergent") {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  position: absolute !important;
+  left: -9999px !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Additional hiding for any floating elements */
+div[style*="position: fixed"],
+div[style*="position: absolute"] {
+  z-index: -1 !important;
+}
+
+div[style*="bottom: 10px"],
+div[style*="bottom: 20px"],
+div[style*="right: 10px"],
+div[style*="right: 20px"] {
+  display: none !important;
+}
+
+/* Hide any small floating divs that might contain branding */
+div[style*="font-size: 12px"],
+div[style*="font-size: 10px"],
+div[style*="font-size: 8px"] {
+  display: none !important;
+}
+
 /* Focus outline */
 *:focus {
   outline: 2px solid rgba(0, 212, 255, 0.5);
