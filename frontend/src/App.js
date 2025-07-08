@@ -20,7 +20,8 @@ const App = () => {
   const [activities, setActivities] = useState([]);
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState(null);
-  const [selectedNote, setSelectedNote] = useState(null);
+  const [isToggling, setIsToggling] = useState({});
+  const [isDeleting, setIsDeleting] = useState({});
   const [expandedActivity, setExpandedActivity] = useState(null);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [noteForm, setNoteForm] = useState({
