@@ -34,7 +34,7 @@ reminders_collection = db.reminders
 sessions_collection = db.sessions
 
 # OpenAI Configuration
-OPENAI_API_KEY = "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"
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 
 # Pydantic Models
 class ChatMessage(BaseModel):
