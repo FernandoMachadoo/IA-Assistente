@@ -711,7 +711,10 @@ const App = () => {
     <div className="dashboard-container">
       <div className="dashboard-header">
         <h2>📊 Dashboard</h2>
-        <button onClick={loadDashboard} className="refresh-btn">🔄</button>
+        <div className="header-actions">
+          <button onClick={loadDashboard} className="refresh-btn">🔄</button>
+          <button onClick={handleLogout} className="logout-btn">🚪 Sair</button>
+        </div>
       </div>
       
       <div className="dashboard-stats">
@@ -734,9 +737,50 @@ const App = () => {
       
       <div className="dashboard-activities">
         <h3>📋 Histórico de Atividades</h3>
+        
+        {/* Excel-style tabs */}
+        <div className="history-tabs">
+          <button 
+            className={`history-tab ${activeHistoryTab === 'all' ? 'active' : ''}`}
+            onClick={() => setActiveHistoryTab('all')}
+          >
+            📊 Todas ({activities.length})
+          </button>
+          <button 
+            className={`history-tab ${activeHistoryTab === 'chat' ? 'active' : ''}`}
+            onClick={() => setActiveHistoryTab('chat')}
+          >
+            💬 Conversas ({filterActivitiesByType('chat').length})
+          </button>
+          <button 
+            className={`history-tab ${activeHistoryTab === 'note' ? 'active' : ''}`}
+            onClick={() => setActiveHistoryTab('note')}
+          >
+            📝 Notas ({filterActivitiesByType('note').length})
+          </button>
+          <button 
+            className={`history-tab ${activeHistoryTab === 'reminder' ? 'active' : ''}`}
+            onClick={() => setActiveHistoryTab('reminder')}
+          >
+            📅 Lembretes ({filterActivitiesByType('reminder').length})
+          </button>
+          <button 
+            className={`history-tab ${activeHistoryTab === 'search' ? 'active' : ''}`}
+            onClick={() => setActiveHistoryTab('search')}
+          >
+            🔍 Pesquisas ({filterActivitiesByType('search').length})
+          </button>
+          <button 
+            className={`history-tab ${activeHistoryTab === 'code' ? 'active' : ''}`}
+            onClick={() => setActiveHistoryTab('code')}
+          >
+            💻 Código ({filterActivitiesByType('code').length})
+          </button>
+        </div>
+        
         <div className="activities-timeline">
-          {activities.length > 0 ? (
-            activities.map((activity, index) => (
+          {filterActivitiesByType(activeHistoryTab).length > 0 ? (
+            filterActivitiesByType(activeHistoryTab).map((activity, index) => (
               <div key={index} className="activity-item" onClick={() => handleActivityClick(activity)}>
                 <div className="activity-icon">{activity.icon}</div>
                 <div className="activity-content">
@@ -749,7 +793,7 @@ const App = () => {
             ))
           ) : (
             <div className="no-activities">
-              <p>Nenhuma atividade recente encontrada.</p>
+              <p>Nenhuma atividade encontrada nesta categoria.</p>
             </div>
           )}
         </div>
