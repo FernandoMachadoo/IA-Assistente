@@ -284,7 +284,46 @@ async def get_chat_history(session_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching history: {str(e)}")
 
-@app.get("/api/chat/recent")
+@app.get("/api/chat/actions")
+async def get_chat_actions():
+    """Get recent notes and reminders created via chat"""
+    try:
+        # Get recent notes created in last hour (likely from chat)
+        recent_notes = list(notes_collection.find({
+            "created_at": {"$gte": datetime.now() - timedelta(hours=1)}
+        }).sort("created_at", -1).limit(5))
+        
+        # Get recent reminders created in last hour (likely from chat)
+        recent_reminders = list(reminders_collection.find({
+            "created_at": {"$gte": datetime.now() - timedelta(hours=1)}
+        }).sort("created_at", -1).limit(5))
+        
+        return {
+            "recent_notes": [
+                {
+                    "id": note["id"],
+                    "title": note["title"],
+                    "content": note["content"],
+                    "category": note["category"],
+                    "created_at": note["created_at"]
+                }
+                for note in recent_notes
+            ],
+            "recent_reminders": [
+                {
+                    "id": reminder["id"],
+                    "title": reminder["title"],
+                    "description": reminder["description"],
+                    "date": reminder["date"],
+                    "priority": reminder["priority"],
+                    "created_at": reminder["created_at"]
+                }
+                for reminder in recent_reminders
+            ]
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching chat actions: {str(e)}")
 async def get_recent_chats():
     try:
         recent_chats = list(chats_collection.find().sort("timestamp", -1).limit(10))
