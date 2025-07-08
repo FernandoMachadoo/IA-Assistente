@@ -300,6 +300,10 @@ const App = () => {
   };
 
   const toggleNoteComplete = async (noteId, completed) => {
+    if (isToggling[noteId]) return; // Prevent multiple calls
+    
+    setIsToggling(prev => ({...prev, [noteId]: true}));
+    
     try {
       const endpoint = completed ? 'uncomplete' : 'complete';
       const response = await fetch(`${BACKEND_URL}/api/notes/${noteId}/${endpoint}`, {
@@ -307,15 +311,32 @@ const App = () => {
       });
 
       if (response.ok) {
-        loadNotes();
-        loadDashboard();
+        // Update local state immediately for better UX
+        setNotes(prev => prev.map(note => 
+          note.id === noteId ? {...note, completed: !completed} : note
+        ));
+        
+        // Refresh data in background
+        setTimeout(() => {
+          loadNotes();
+          loadDashboard();
+        }, 100);
+      } else {
+        throw new Error('Falha ao atualizar nota');
       }
     } catch (error) {
       console.error('Error toggling note completion:', error);
+      alert('Erro ao atualizar nota. Tente novamente.');
+    } finally {
+      setIsToggling(prev => ({...prev, [noteId]: false}));
     }
   };
 
   const toggleReminderComplete = async (reminderId, completed) => {
+    if (isToggling[reminderId]) return; // Prevent multiple calls
+    
+    setIsToggling(prev => ({...prev, [reminderId]: true}));
+    
     try {
       const endpoint = completed ? 'uncomplete' : 'complete';
       const response = await fetch(`${BACKEND_URL}/api/reminders/${reminderId}/${endpoint}`, {
@@ -323,16 +344,33 @@ const App = () => {
       });
 
       if (response.ok) {
-        loadReminders();
-        loadDashboard();
+        // Update local state immediately for better UX
+        setReminders(prev => prev.map(reminder => 
+          reminder.id === reminderId ? {...reminder, completed: !completed} : reminder
+        ));
+        
+        // Refresh data in background
+        setTimeout(() => {
+          loadReminders();
+          loadDashboard();
+        }, 100);
+      } else {
+        throw new Error('Falha ao atualizar lembrete');
       }
     } catch (error) {
       console.error('Error toggling reminder completion:', error);
+      alert('Erro ao atualizar lembrete. Tente novamente.');
+    } finally {
+      setIsToggling(prev => ({...prev, [reminderId]: false}));
     }
   };
 
   const deleteItem = async (type, id) => {
+    if (isDeleting[id]) return; // Prevent multiple calls
+    
     if (!window.confirm('Tem certeza que deseja deletar este item?')) return;
+
+    setIsDeleting(prev => ({...prev, [id]: true}));
 
     try {
       let endpoint = '';
@@ -367,27 +405,33 @@ const App = () => {
       if (response.ok) {
         console.log('Delete successful');
         
-        // Refresh appropriate data
+        // Update local state immediately for better UX
         if (endpoint === 'notes') {
-          loadNotes();
+          setNotes(prev => prev.filter(note => note.id !== id));
         } else if (endpoint === 'reminders') {
-          loadReminders();
+          setReminders(prev => prev.filter(reminder => reminder.id !== id));
         }
         
-        // Always refresh dashboard and close modal
-        loadDashboard();
+        // Close modal immediately
         setShowActivityModal(false);
+        
+        // Refresh dashboard in background
+        setTimeout(() => {
+          loadDashboard();
+        }, 100);
         
         // Show success message
         alert('Item deletado com sucesso!');
       } else {
         const errorData = await response.json();
         console.error('Delete failed:', errorData);
-        alert('Erro ao deletar item: ' + (errorData.detail || 'Erro desconhecido'));
+        throw new Error(errorData.detail || 'Erro desconhecido');
       }
     } catch (error) {
       console.error(`Error deleting ${type}:`, error);
-      alert('Erro ao deletar item. Verifique a conexão.');
+      alert('Erro ao deletar item: ' + error.message);
+    } finally {
+      setIsDeleting(prev => ({...prev, [id]: false}));
     }
   };
 
