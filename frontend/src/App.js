@@ -148,26 +148,29 @@ const App = () => {
         
         // Check if a note or reminder was created
         if (data.response.includes('✅ Nota criada') || data.response.includes('⏰ Lembrete criado')) {
-          // Refresh notes and reminders to show new items
-          setTimeout(() => {
-            loadNotes();
-            loadReminders();
-            loadDashboard();
-          }, 500);
-          
-          // Show a nice notification
+          // Refresh immediately and show notification
           if (data.response.includes('✅ Nota criada')) {
+            loadNotes(); // Refresh notes immediately
             setTimeout(() => {
-              alert('✅ Nota criada via chat! Verifique na seção Notas.');
-            }, 1000);
-          } else if (data.response.includes('⏰ Lembrete criado')) {
+              alert('✅ Nota criada! Veja na seção Notas.');
+            }, 500);
+          } 
+          
+          if (data.response.includes('⏰ Lembrete criado')) {
+            loadReminders(); // Refresh reminders immediately
             setTimeout(() => {
-              alert('⏰ Lembrete criado via chat! Verifique na seção Lembretes.');
-            }, 1000);
+              alert('⏰ Lembrete criado! Veja na seção Lembretes.');
+            }, 500);
           }
+          
+          // Refresh dashboard
+          setTimeout(() => {
+            loadDashboard();
+          }, 300);
+        } else {
+          // Always refresh dashboard for normal chats
+          loadDashboard();
         }
-        
-        loadDashboard(); // Always refresh dashboard to show new activity
       } else {
         throw new Error(data.detail || 'Error sending message');
       }
