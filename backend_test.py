@@ -159,7 +159,6 @@ class AIAssistantAPITest(unittest.TestCase):
             self.assertEqual(response.status_code, 200)
             print("✅ Reminder completion passed")
 
-    @unittest.skip("AI features are not working due to emergentintegrations module issue")
     def test_05_search_functionality(self):
         """Test the search functionality"""
         print("\n🔍 Testing search functionality...")
