@@ -10,6 +10,10 @@ import uuid
 from pymongo import MongoClient
 from emergentintegrations.llm.chat import LlmChat, UserMessage
 import asyncio
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = FastAPI()
 
