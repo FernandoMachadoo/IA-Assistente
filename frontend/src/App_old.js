@@ -67,22 +67,20 @@ const App = () => {
 
   useEffect(() => {
     initializeSpeechRecognition();
-    if (isAuthenticated) {
-      loadDashboard();
-    }
-  }, [isAuthenticated]);
+    loadDashboard();
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   useEffect(() => {
-    if (activeTab === 'notes' && isAuthenticated) {
+    if (activeTab === 'notes') {
       loadNotes();
-    } else if (activeTab === 'reminders' && isAuthenticated) {
+    } else if (activeTab === 'reminders') {
       loadReminders();
     }
-  }, [activeTab, isAuthenticated]);
+  }, [activeTab]);
 
   const initializeSpeechRecognition = () => {
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -138,6 +136,7 @@ const App = () => {
 
   const loadReminders = async () => {
     try {
+      // Load all reminders, not just upcoming ones for better visibility
       const response = await fetch(`${BACKEND_URL}/api/reminders`);
       const data = await response.json();
       setReminders(data);
@@ -266,7 +265,7 @@ const App = () => {
 
       const data = await response.json();
       setSearchResults(data.results);
-      loadDashboard();
+      loadDashboard(); // Refresh dashboard to show new activity
     } catch (error) {
       console.error('Error searching:', error);
       setSearchResults('Erro na pesquisa. Tente novamente.');
@@ -303,7 +302,7 @@ const App = () => {
 
       const data = await response.json();
       setCodeAnalysis(data.analysis);
-      loadDashboard();
+      loadDashboard(); // Refresh dashboard to show new activity
     } catch (error) {
       console.error('Error analyzing code:', error);
       setCodeAnalysis('Erro na análise. Tente novamente.');
@@ -332,7 +331,7 @@ const App = () => {
       if (response.ok) {
         setNoteForm({ title: '', content: '', category: 'general', tags: '' });
         loadNotes();
-        loadDashboard();
+        loadDashboard(); // Refresh dashboard to show new activity
       }
     } catch (error) {
       console.error('Error saving note:', error);
@@ -359,7 +358,7 @@ const App = () => {
       if (response.ok) {
         setReminderForm({ title: '', description: '', date: '', priority: 'medium' });
         loadReminders();
-        loadDashboard();
+        loadDashboard(); // Refresh dashboard to show new activity
       }
     } catch (error) {
       console.error('Error saving reminder:', error);
@@ -367,7 +366,7 @@ const App = () => {
   };
 
   const toggleNoteComplete = async (noteId, completed) => {
-    if (isToggling[noteId]) return;
+    if (isToggling[noteId]) return; // Prevent multiple calls
     
     setIsToggling(prev => ({...prev, [noteId]: true}));
     
@@ -378,10 +377,12 @@ const App = () => {
       });
 
       if (response.ok) {
+        // Update local state immediately for better UX
         setNotes(prev => prev.map(note => 
           note.id === noteId ? {...note, completed: !completed} : note
         ));
         
+        // Refresh data in background
         setTimeout(() => {
           loadNotes();
           loadDashboard();
@@ -398,7 +399,7 @@ const App = () => {
   };
 
   const toggleReminderComplete = async (reminderId, completed) => {
-    if (isToggling[reminderId]) return;
+    if (isToggling[reminderId]) return; // Prevent multiple calls
     
     setIsToggling(prev => ({...prev, [reminderId]: true}));
     
@@ -409,10 +410,12 @@ const App = () => {
       });
 
       if (response.ok) {
+        // Update local state immediately for better UX
         setReminders(prev => prev.map(reminder => 
           reminder.id === reminderId ? {...reminder, completed: !completed} : reminder
         ));
         
+        // Refresh data in background
         setTimeout(() => {
           loadReminders();
           loadDashboard();
@@ -429,7 +432,7 @@ const App = () => {
   };
 
   const deleteItem = async (type, id) => {
-    if (isDeleting[id]) return;
+    if (isDeleting[id]) return; // Prevent multiple calls
     
     if (!window.confirm('Tem certeza que deseja deletar este item?')) return;
 
@@ -438,6 +441,7 @@ const App = () => {
     try {
       let endpoint = '';
       
+      // Map type to correct endpoint
       switch(type) {
         case 'note':
           endpoint = 'notes';
@@ -455,29 +459,38 @@ const App = () => {
           endpoint = 'code';
           break;
         default:
-          endpoint = type;
+          endpoint = type; // fallback to original type
       }
 
+      console.log(`Deleting ${endpoint}/${id}`);
+      
       const response = await fetch(`${BACKEND_URL}/api/${endpoint}/${id}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
+        console.log('Delete successful');
+        
+        // Update local state immediately for better UX
         if (endpoint === 'notes') {
           setNotes(prev => prev.filter(note => note.id !== id));
         } else if (endpoint === 'reminders') {
           setReminders(prev => prev.filter(reminder => reminder.id !== id));
         }
         
+        // Close modal immediately
         setShowActivityModal(false);
         
+        // Refresh dashboard in background
         setTimeout(() => {
           loadDashboard();
         }, 100);
         
+        // Show success message
         alert('Item deletado com sucesso!');
       } else {
         const errorData = await response.json();
+        console.error('Delete failed:', errorData);
         throw new Error(errorData.detail || 'Erro desconhecido');
       }
     } catch (error) {
@@ -526,45 +539,6 @@ const App = () => {
       return date.toLocaleDateString('pt-BR');
     }
   };
-
-  const renderLogin = () => (
-    <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <h1>🤖 IA Assistente Pessoal</h1>
-          <p>Acesso Seguro Necessário</p>
-        </div>
-        
-        <form onSubmit={handleLogin} className="login-form">
-          <div className="login-field">
-            <label>🔐 Senha de Acesso:</label>
-            <input
-              type="password"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-              placeholder="Digite a senha..."
-              className="login-input"
-              autoFocus
-            />
-          </div>
-          
-          <button type="submit" className="login-btn">
-            🚀 Entrar
-          </button>
-        </form>
-        
-        <div className="login-footer">
-          <p>Seu assistente pessoal com IA avançada</p>
-          <div className="login-features">
-            <span>💬 Chat Inteligente</span>
-            <span>📝 Notas Organizadas</span>
-            <span>📅 Lembretes Inteligentes</span>
-            <span>💻 Análise de Código</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   const renderActivityModal = () => {
     if (!showActivityModal || !expandedActivity) return null;
@@ -696,7 +670,44 @@ const App = () => {
     );
   };
 
-  const renderDashboard = () => (
+  const renderLogin = () => (
+    <div className="login-container">
+      <div className="login-card">
+        <div className="login-header">
+          <h1>🤖 IA Assistente Pessoal</h1>
+          <p>Acesso Seguro Necessário</p>
+        </div>
+        
+        <form onSubmit={handleLogin} className="login-form">
+          <div className="login-field">
+            <label>🔐 Senha de Acesso:</label>
+            <input
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              placeholder="Digite a senha..."
+              className="login-input"
+              autoFocus
+            />
+          </div>
+          
+          <button type="submit" className="login-btn">
+            🚀 Entrar
+          </button>
+        </form>
+        
+        <div className="login-footer">
+          <p>Seu assistente pessoal com IA avançada</p>
+          <div className="login-features">
+            <span>💬 Chat Inteligente</span>
+            <span>📝 Notas Organizadas</span>
+            <span>📅 Lembretes Inteligentes</span>
+            <span>💻 Análise de Código</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
     <div className="dashboard-container">
       <div className="dashboard-header">
         <h2>📊 Dashboard</h2>
