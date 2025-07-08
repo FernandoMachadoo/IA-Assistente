@@ -144,7 +144,29 @@ const App = () => {
         setSessionId(data.session_id);
         const aiMessage = { text: data.response, sender: 'ai', timestamp: new Date() };
         setMessages(prev => [...prev, aiMessage]);
-        loadDashboard(); // Refresh dashboard to show new activity
+        
+        // Check if a note or reminder was created
+        if (data.response.includes('✅ Nota criada') || data.response.includes('⏰ Lembrete criado')) {
+          // Refresh notes and reminders to show new items
+          setTimeout(() => {
+            loadNotes();
+            loadReminders();
+            loadDashboard();
+          }, 500);
+          
+          // Show a nice notification
+          if (data.response.includes('✅ Nota criada')) {
+            setTimeout(() => {
+              alert('✅ Nota criada via chat! Verifique na seção Notas.');
+            }, 1000);
+          } else if (data.response.includes('⏰ Lembrete criado')) {
+            setTimeout(() => {
+              alert('⏰ Lembrete criado via chat! Verifique na seção Lembretes.');
+            }, 1000);
+          }
+        }
+        
+        loadDashboard(); // Always refresh dashboard to show new activity
       } else {
         throw new Error(data.detail || 'Error sending message');
       }
