@@ -37,8 +37,8 @@ notes_collection = db.notes
 reminders_collection = db.reminders
 sessions_collection = db.sessions
 
-# OpenAI Configuration
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
+# Google Gemini Configuration
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 
 # Pydantic Models
 class ChatMessage(BaseModel):
@@ -115,7 +115,7 @@ def save_message(session_id: str, message: str, response: str):
 # API Endpoints
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "message": "AI Assistant API is running"}
+    return {"status": "ok", "message": "AI Assistant API is running with Gemini 2.0 Flash"}
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(chat_request: ChatMessage):
@@ -127,12 +127,12 @@ async def chat(chat_request: ChatMessage):
             {"session_id": session_id}
         ).sort("timestamp", -1).limit(10))
         
-        # Initialize LLM chat
+        # Initialize Gemini chat
         chat = LlmChat(
-            api_key=OPENAI_API_KEY,
+            api_key=GEMINI_API_KEY,
             session_id=session_id,
-            system_message="Você é um assistente pessoal de IA avançado e confiável. Você pode ajudar com pesquisas, análises, desenvolvimento de código, organização de tarefas e muito mais. Seja prestativo, inteligente e amigável."
-        ).with_model("openai", "gpt-4o").with_max_tokens(4096)
+            system_message="Você é um assistente pessoal de IA avançado e inteligente. Você pode ajudar com pesquisas, análises, desenvolvimento de código, organização de tarefas e muito mais. Seja prestativo, criativo e amigável. Responda sempre em português brasileiro."
+        ).with_model("gemini", "gemini-2.0-flash").with_max_tokens(4096)
         
         # Create user message
         user_message = UserMessage(text=chat_request.message)
@@ -318,12 +318,12 @@ async def complete_reminder(reminder_id: str):
 @app.post("/api/search")
 async def search(search_query: SearchQuery):
     try:
-        # Initialize LLM chat for search
+        # Initialize Gemini chat for search
         chat = LlmChat(
-            api_key=OPENAI_API_KEY,
+            api_key=GEMINI_API_KEY,
             session_id=str(uuid.uuid4()),
-            system_message="Você é um assistente especializado em pesquisas. Forneça respostas precisas, detalhadas e bem estruturadas sobre qualquer tópico pesquisado."
-        ).with_model("openai", "gpt-4o").with_max_tokens(4096)
+            system_message="Você é um assistente especializado em pesquisas. Forneça respostas precisas, detalhadas e bem estruturadas sobre qualquer tópico pesquisado. Responda sempre em português brasileiro."
+        ).with_model("gemini", "gemini-2.0-flash").with_max_tokens(4096)
         
         search_prompt = f"Pesquise e forneça informações detalhadas sobre: {search_query.query}"
         
@@ -342,12 +342,12 @@ async def search(search_query: SearchQuery):
 @app.post("/api/code/analyze")
 async def analyze_code(code_request: CodeAnalysis):
     try:
-        # Initialize LLM chat for code analysis
+        # Initialize Gemini chat for code analysis
         chat = LlmChat(
-            api_key=OPENAI_API_KEY,
+            api_key=GEMINI_API_KEY,
             session_id=str(uuid.uuid4()),
-            system_message="Você é um especialista em desenvolvimento de software. Analise código, identifique problemas, sugira melhorias e forneça explicações detalhadas."
-        ).with_model("openai", "gpt-4o").with_max_tokens(4096)
+            system_message="Você é um especialista em desenvolvimento de software. Analise código, identifique problemas, sugira melhorias e forneça explicações detalhadas. Responda sempre em português brasileiro."
+        ).with_model("gemini", "gemini-2.0-flash").with_max_tokens(4096)
         
         if code_request.task == "analyze":
             prompt = f"Analise este código {code_request.language}:\n\n{code_request.code}\n\nForneça uma análise detalhada incluindo: problemas, melhorias, explicações e sugestões."
