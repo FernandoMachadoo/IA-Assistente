@@ -213,7 +213,12 @@ async def get_recent_chats():
 async def delete_chat(chat_id: str):
     try:
         from bson import ObjectId
-        result = chats_collection.delete_one({"_id": ObjectId(chat_id)})
+        # Try both ObjectId and string ID
+        try:
+            result = chats_collection.delete_one({"_id": ObjectId(chat_id)})
+        except:
+            # If ObjectId fails, try with string id
+            result = chats_collection.delete_one({"id": chat_id})
         
         if result.deleted_count == 0:
             raise HTTPException(status_code=404, detail="Chat not found")
