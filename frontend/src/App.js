@@ -742,8 +742,6 @@ const App = () => {
                 <button onClick={() => deleteItem('note', note.id)} className="delete-btn-small">
                   🗑️
                 </button>
-                  🗑️
-                </button>
               </div>
             </div>
             <p>{note.content}</p>
