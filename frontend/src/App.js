@@ -739,7 +739,7 @@ const App = () => {
                   />
                   <span className="checkmark">✓</span>
                 </label>
-                <button onClick={() => deleteItem('notes', note.id)} className="delete-btn-small">
+                <button onClick={() => deleteItem('note', note.id)} className="delete-btn-small">
                   🗑️
                 </button>
               </div>
