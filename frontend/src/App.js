@@ -111,7 +111,8 @@ const App = () => {
 
   const loadReminders = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/reminders?upcoming=true`);
+      // Load all reminders, not just upcoming ones for better visibility
+      const response = await fetch(`${BACKEND_URL}/api/reminders`);
       const data = await response.json();
       setReminders(data);
     } catch (error) {
