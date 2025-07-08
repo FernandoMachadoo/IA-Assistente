@@ -151,18 +151,109 @@ async def chat(chat_request: ChatMessage):
             {"session_id": session_id}
         ).sort("timestamp", -1).limit(10))
         
-        # Initialize Gemini chat
-        chat = LlmChat(
+        # Initialize Gemini chat for intent detection
+        intent_chat = LlmChat(
             api_key=GEMINI_API_KEY,
-            session_id=session_id,
-            system_message="Você é um assistente pessoal de IA avançado e inteligente. Você pode ajudar com pesquisas, análises, desenvolvimento de código, organização de tarefas e muito mais. Seja prestativo, criativo e amigável. Responda sempre em português brasileiro."
-        ).with_model("gemini", "gemini-2.0-flash").with_max_tokens(4096)
+            session_id=str(uuid.uuid4()),
+            system_message="""Você é um analisador de intenções. Analise a mensagem do usuário e determine se ele está pedindo para:
+1. Criar uma nota (palavras-chave: nota, anotar, escrever, salvar texto, lembrar isso)
+2. Criar um lembrete (palavras-chave: lembrete, lembrar, agendamento, compromisso, tarefa, fazer em)
+3. Apenas conversar normalmente
+
+Responda EXATAMENTE em um destes formatos:
+- Se for para criar nota: CRIAR_NOTA|título|conteúdo|categoria
+- Se for para criar lembrete: CRIAR_LEMBRETE|título|descrição|data_hora|prioridade
+- Se for conversa normal: CONVERSAR
+
+Para lembretes, a data_hora deve estar no formato ISO (ex: 2024-07-10T15:30:00).
+Para categoria use: general, work, personal, study
+Para prioridade use: low, medium, high
+
+Exemplos:
+- "Anote que preciso comprar leite" -> CRIAR_NOTA|Compras|Preciso comprar leite|personal
+- "Me lembre de ligar para o médico amanhã às 15h" -> CRIAR_LEMBRETE|Ligar médico|Ligar para o médico|2024-07-09T15:00:00|medium
+- "Como você está?" -> CONVERSAR"""
+        ).with_model("gemini", "gemini-2.0-flash").with_max_tokens(200)
         
-        # Create user message
-        user_message = UserMessage(text=chat_request.message)
+        # Analyze intent
+        intent_message = UserMessage(text=chat_request.message)
+        intent_response = await intent_chat.send_message(intent_message)
         
-        # Send message and get response
-        response = await chat.send_message(user_message)
+        # Process based on intent
+        if intent_response.startswith("CRIAR_NOTA|"):
+            try:
+                parts = intent_response.split("|")
+                if len(parts) >= 4:
+                    _, title, content, category = parts[0], parts[1], parts[2], parts[3]
+                    
+                    # Create note
+                    note_id = str(uuid.uuid4())
+                    note_data = {
+                        "id": note_id,
+                        "title": title,
+                        "content": content,
+                        "category": category,
+                        "tags": [],
+                        "created_at": datetime.now(),
+                        "updated_at": datetime.now(),
+                        "completed": False
+                    }
+                    
+                    notes_collection.insert_one(note_data)
+                    
+                    response = f"✅ Nota criada com sucesso!\n\n📝 **{title}**\n{content}\n\nCategoria: {category}\n\nVocê pode ver sua nota na seção 'Notas' do menu."
+                else:
+                    response = "Entendi que você quer criar uma nota, mas não consegui extrair todas as informações. Pode repetir especificando título e conteúdo?"
+            except Exception as e:
+                response = f"Entendi que você quer criar uma nota, mas houve um erro: {str(e)}. Pode tentar novamente?"
+                
+        elif intent_response.startswith("CRIAR_LEMBRETE|"):
+            try:
+                parts = intent_response.split("|")
+                if len(parts) >= 5:
+                    _, title, description, date_str, priority = parts[0], parts[1], parts[2], parts[3], parts[4]
+                    
+                    # Parse date
+                    try:
+                        reminder_date = datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                    except:
+                        # If parsing fails, set for tomorrow at 10 AM
+                        reminder_date = datetime.now() + timedelta(days=1)
+                        reminder_date = reminder_date.replace(hour=10, minute=0, second=0, microsecond=0)
+                    
+                    # Create reminder
+                    reminder_id = str(uuid.uuid4())
+                    reminder_data = {
+                        "id": reminder_id,
+                        "title": title,
+                        "description": description,
+                        "date": reminder_date,
+                        "priority": priority,
+                        "created_at": datetime.now(),
+                        "completed": False
+                    }
+                    
+                    reminders_collection.insert_one(reminder_data)
+                    
+                    response = f"⏰ Lembrete criado com sucesso!\n\n📅 **{title}**\n{description}\n\nData: {reminder_date.strftime('%d/%m/%Y às %H:%M')}\nPrioridade: {priority}\n\nVocê pode ver seu lembrete na seção 'Lembretes' do menu."
+                else:
+                    response = "Entendi que você quer criar um lembrete, mas não consegui extrair todas as informações. Pode repetir especificando título, descrição e quando quer ser lembrado?"
+            except Exception as e:
+                response = f"Entendi que você quer criar um lembrete, mas houve um erro: {str(e)}. Pode tentar novamente?"
+                
+        else:
+            # Normal conversation
+            chat = LlmChat(
+                api_key=GEMINI_API_KEY,
+                session_id=session_id,
+                system_message="Você é um assistente pessoal de IA avançado e inteligente. Você pode ajudar com pesquisas, análises, desenvolvimento de código, organização de tarefas e muito mais. Seja prestativo, criativo e amigável. Responda sempre em português brasileiro. Se o usuário pedir para criar notas ou lembretes, oriente-o a usar comandos claros como 'crie uma nota sobre...' ou 'me lembre de...'."
+            ).with_model("gemini", "gemini-2.0-flash").with_max_tokens(4096)
+            
+            # Create user message
+            user_message = UserMessage(text=chat_request.message)
+            
+            # Send message and get response
+            response = await chat.send_message(user_message)
         
         # Save to database
         save_message(session_id, chat_request.message, response)
@@ -170,6 +261,8 @@ async def chat(chat_request: ChatMessage):
         return ChatResponse(response=response, session_id=session_id)
         
     except Exception as e:
+        error_response = f"Desculpe, ocorreu um erro: {str(e)}. Tente novamente."
+        save_message(session_id, chat_request.message, error_response)
         raise HTTPException(status_code=500, detail=f"Error processing chat: {str(e)}")
 
 @app.get("/api/chat/history/{session_id}")
